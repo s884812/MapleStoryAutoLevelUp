@@ -31,14 +31,14 @@ from src.utils.common import (
 # window size for each tab
 if is_mac():
     TAB_WINDOW_SIZE = {
-        'Main': (700, 800),
+        'Main': (950, 800),
         'Advanced Settings': (750, 800),
         'Game Window Viz': (850, 430), # smaller for macbook screen
         'Route Map Viz': (400, 400),
     }
 else:
     TAB_WINDOW_SIZE = {
-        'Main': (700, 800),
+        'Main': (950, 800),
         'Advanced Settings': (750, 800),
         'Game Window Viz': (1280, 650),
         'Route Map Viz': (800, 800),
@@ -112,84 +112,140 @@ class MainWindow(QMainWindow):
 
     def setup_main_tab(self):
         '''
-        Init Main Tab with scrollable area
+        Initialize the main tab with a three-column dashboard layout.
         '''
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-
-        scroll_widget = QWidget()
-        scroll_layout = QVBoxLayout(scroll_widget)
-
-        # Control group box
-        self.control_gbox = self.create_control_gbox()
-        scroll_layout.addWidget(self.control_gbox)
-
-        # Attack setting group box
-        self.attack_gbox = self.create_attack_gbox()
-        scroll_layout.addWidget(self.attack_gbox)
-
-        # Key bindings group box
-        self.key_binding_gbox = self.create_key_binding_gbox()
-        scroll_layout.addWidget(self.key_binding_gbox)
-
-        # Pet function group box
-        self.pet_skill_gbox = self.create_pet_skill_gbox()
-        scroll_layout.addWidget(self.pet_skill_gbox)
-
-        # Map selection group box
-        self.map_selection_gbox = self.create_map_selection_gbox()
-        scroll_layout.addWidget(self.map_selection_gbox)
-
-        # Logger output window
-        self.log_gbox = self.create_log_gbox()
-        scroll_layout.addWidget(self.log_gbox)
-
-        scroll_area.setWidget(scroll_widget)
-
         tab_main = QWidget()
-        layout = QVBoxLayout(tab_main)
-        layout.addWidget(scroll_area)
+        main_layout = QHBoxLayout(tab_main)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(10)
+
+        # Create three columns
+        left_col = QVBoxLayout()
+        center_col = QVBoxLayout()
+        right_col = QVBoxLayout()
+
+        # --- Left Column ---
+        self.control_gbox = self.create_control_gbox()
+        left_col.addWidget(self.control_gbox)
+
+        self.log_gbox = self.create_log_gbox()
+        left_col.addWidget(self.log_gbox)
+        left_col.addStretch() # Pushes log to bottom if there's space
+
+        # --- Center Column ---
+        self.attack_gbox = self.create_attack_gbox()
+        center_col.addWidget(self.attack_gbox)
+
+        self.key_binding_gbox = self.create_key_binding_gbox()
+        center_col.addWidget(self.key_binding_gbox)
+
+        self.pet_skill_gbox = self.create_pet_skill_gbox()
+        center_col.addWidget(self.pet_skill_gbox)
+        center_col.addStretch()
+
+        # --- Right Column ---
+        self.config_gbox = self.create_config_gbox()
+        right_col.addWidget(self.config_gbox)
+
+        self.map_selection_gbox = self.create_map_selection_gbox()
+        right_col.addWidget(self.map_selection_gbox)
+
+        # Map Preview Placeholder (for Step 2)
+        self.map_preview_gbox = QGroupBox("🗺️ Map Preview")
+        preview_layout = QVBoxLayout()
+        self.map_preview_canvas = QLabel("Select a map to see a preview.")
+        self.map_preview_canvas.setAlignment(Qt.AlignCenter)
+        self.map_preview_canvas.setMinimumSize(200, 150)
+        self.map_preview_canvas.setStyleSheet("background-color: #222; border-radius: 5px;")
+        preview_layout.addWidget(self.map_preview_canvas)
+        self.map_preview_gbox.setLayout(preview_layout)
+        right_col.addWidget(self.map_preview_gbox)
+        right_col.addStretch()
+
+
+        # Add columns to the main layout
+        main_layout.addLayout(left_col, 1)    # 1 stretch factor
+        main_layout.addLayout(center_col, 1) # 1 stretch factor
+        main_layout.addLayout(right_col, 1)  # 1 stretch factor
 
         return tab_main
 
     def setup_advance_setting_tab(self):
+        '''
+        Set up the Advanced Settings tab with logically grouped settings.
+        '''
         tab_advance_setting = QWidget()
+        self.advance_settings_gboxes = {}  # store title -> QGroupBox mapping
 
-        # Two vertical layouts side-by-side
+        # --- Define logical groups and their members ---
+        logical_groups = {
+            "⚔️ Combat & Skills": [
+                'directional_attack', 'aoe_skill', 'buff_skill',
+                'monster_detect', 'health_monitor'
+            ],
+            "🏃 Movement & Navigation": [
+                'teleport', 'edge_teleport', 'patrol', 'route', 'watchdog'
+            ],
+            "🔄 Channel Hopping": [
+                'channel_change', 'scheduled_channel_switching'
+            ],
+            "🧩 Rune Automation": [
+                'rune_solver', 'rune_detect', 'rune_find',
+                'rune_warning_cn', 'rune_warning_eng',
+                'rune_enable_msg_cn', 'rune_enable_msg_eng'
+            ],
+            "👁️ Detection & Vision": [
+                'camera', 'minimap', 'party_red_bar', 'nametag', 'character'
+            ],
+            "🛠️ System & Tools": [
+                'game_window', 'system', 'profiler', 'email',
+                'ui_coords', 'route_recoder'
+            ]
+        }
+
+        # --- Create layouts ---
         left_col = QVBoxLayout()
         right_col = QVBoxLayout()
 
-        # Distribute group boxes evenly between columns
-        self.advance_settings_gboxes = {}  # store title -> QGroupBox mapping
-        for idx, title in enumerate(self.cfg):
-            # Skip hide settings
-            if title in ADV_SETTINGS_HIDE:
-                continue
-            gbox = create_advance_setting_gbox(title, self.cfg,
-                                               self.comments,
-                                               self.comments_section)
-            self.advance_settings_gboxes[title] = gbox
-            if idx % 2 == 0:
-                left_col.addWidget(gbox)
-            else:
-                right_col.addWidget(gbox)
+        # --- Helper function to create a main group ---
+        def create_main_gbox(title, members):
+            main_gbox = QGroupBox(title)
+            main_layout = QVBoxLayout(main_gbox)
+            for setting_name in members:
+                if setting_name in self.cfg and setting_name not in ADV_SETTINGS_HIDE:
+                    gbox = create_advance_setting_gbox(
+                        setting_name, self.cfg, self.comments, self.comments_section
+                    )
+                    self.advance_settings_gboxes[setting_name] = gbox
+                    main_layout.addWidget(gbox)
+            main_gbox.setLayout(main_layout)
+            return main_gbox
 
-        # Wrap columns in a horizontal layout
-        row_layout = QHBoxLayout()
-        row_layout.addLayout(left_col)
-        row_layout.addLayout(right_col)
+        # --- Populate columns with logical groups ---
+        left_col.addWidget(create_main_gbox("⚔️ Combat & Skills", logical_groups["⚔️ Combat & Skills"]))
+        left_col.addWidget(create_main_gbox("🏃 Movement & Navigation", logical_groups["🏃 Movement & Navigation"]))
+        left_col.addWidget(create_main_gbox("🔄 Channel Hopping", logical_groups["🔄 Channel Hopping"]))
+        left_col.addStretch()
 
-        # Make it scrollable (recommended for lots of settings)
-        scroll_area = QScrollArea()
+        right_col.addWidget(create_main_gbox("🧩 Rune Automation", logical_groups["🧩 Rune Automation"]))
+        right_col.addWidget(create_main_gbox("👁️ Detection & Vision", logical_groups["👁️ Detection & Vision"]))
+        right_col.addWidget(create_main_gbox("🛠️ System & Tools", logical_groups["🛠️ System & Tools"]))
+        right_col.addStretch()
+
+        # --- Final assembly ---
+        main_layout = QHBoxLayout()
+        main_layout.addLayout(left_col)
+        main_layout.addLayout(right_col)
+
         container = QWidget()
-        container.setLayout(row_layout)
-        scroll_area.setWidget(container)
-        scroll_area.setWidgetResizable(True)
+        container.setLayout(main_layout)
 
-        # Final layout for the tab
-        final_layout = QVBoxLayout()
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setWidget(container)
+
+        final_layout = QVBoxLayout(tab_advance_setting)
         final_layout.addWidget(scroll_area)
-        tab_advance_setting.setLayout(final_layout)
 
         return tab_advance_setting
 
@@ -479,69 +535,76 @@ class MainWindow(QMainWindow):
 
     def create_control_gbox(self):
         '''
-        Creates a group box with hotkey instructions and a dropdown to select mode
+        Creates a group box for bot operation controls like start, pause, and record.
         '''
         gbox = QGroupBox("🕹️ Bot Control")
         layout = QVBoxLayout()
         layout.setSpacing(6)
 
-        # Load Config Section
-        self.load_config_error_label = create_error_label()
-        layout.addWidget(self.load_config_error_label)  # Add above the button
-
-        load_config_layout = QHBoxLayout()
-        load_config_layout.setSpacing(8)
-        load_config_layout.setAlignment(Qt.AlignLeft)
-
-        self.button_load_config = QPushButton("📂 Load Config")
-        self.button_load_config.clicked.connect(
-            lambda: self.load_config(self.load_config_error_label)
-        )
-        self.label_config_path = QLabel("(No config loaded)")
-
-        load_config_layout.addWidget(self.button_load_config)
-        load_config_layout.addWidget(self.label_config_path)
-
         # --- Control Buttons ---
         button_layout = QHBoxLayout()
         button_layout.setSpacing(8)
-        button_layout.setAlignment(Qt.AlignLeft)
 
         # Start / Pause Button
         self.button_start_pause = QPushButton("▶ Start (F1)")
         self.button_start_pause.setCheckable(True)
         self.button_start_pause.clicked.connect(self.toggle_start_ui)
+        button_layout.addWidget(self.button_start_pause)
 
         # Screenshot Button
         self.button_screenshot = QPushButton("📸 Screenshot (F2)")
         self.button_screenshot.clicked.connect(self.toggle_screenshot_ui)
+        button_layout.addWidget(self.button_screenshot)
 
         # Record Button
         self.button_record = QPushButton("⏺ Record (F3)")
         self.button_record.setCheckable(True)
         self.button_record.clicked.connect(self.toggle_record_ui)
+        button_layout.addWidget(self.button_record)
 
         # Bot Mode Dropdown
         layout_bot_mode = QHBoxLayout()
-        layout_bot_mode.setSpacing(8)
+        layout_bot_mode.setSpacing(5)
+        layout_bot_mode.addWidget(QLabel("Mode:"))
         self.bot_mode = QComboBox()
         self.bot_mode.addItems(["normal", "aux", "patrol"])
-
-        layout_bot_mode.addWidget(QLabel("Bot Mode:"))
         layout_bot_mode.addWidget(self.bot_mode)
-        layout_bot_mode.setAlignment(Qt.AlignLeft)
 
-        button_layout.addWidget(self.button_start_pause)
-        button_layout.addWidget(self.button_screenshot)
-        button_layout.addWidget(self.button_record)
-        button_layout.addLayout(layout_bot_mode)
+        # Main layout
+        main_controls_layout = QVBoxLayout()
+        main_controls_layout.addLayout(button_layout)
+        main_controls_layout.addLayout(layout_bot_mode)
 
-        layout.addLayout(button_layout)
-        layout.addLayout(load_config_layout)
-
+        layout.addLayout(main_controls_layout)
         gbox.setLayout(layout)
         return gbox
-        logger.info(f"[UI] Map selected: {map_name}")
+
+    def create_config_gbox(self):
+        '''
+        Creates a group box for loading and managing configurations.
+        '''
+        gbox = QGroupBox("⚙️ Configuration")
+        layout = QVBoxLayout()
+        layout.setSpacing(6)
+
+        self.load_config_error_label = create_error_label()
+        layout.addWidget(self.load_config_error_label)
+
+        # Button and Label Layout
+        hbox = QHBoxLayout()
+        self.button_load_config = QPushButton("📂 Load Config")
+        self.button_load_config.clicked.connect(
+            lambda: self.load_config(self.load_config_error_label)
+        )
+        hbox.addWidget(self.button_load_config)
+
+        self.label_config_path = QLabel("(No config loaded)")
+        self.label_config_path.setWordWrap(True)
+        hbox.addWidget(self.label_config_path)
+
+        layout.addLayout(hbox)
+        gbox.setLayout(layout)
+        return gbox
 
     def create_attack_widget(self):
         '''
@@ -785,12 +848,35 @@ class MainWindow(QMainWindow):
         logger.info(f"[UI] user change tab to {tab_name}")
 
     def on_map_selected(self, item):
-        # Parse English name from item text
-        map_name = item.text().split(" (")[0]
+        '''
+        Callback function for when a map is selected from the list.
+        Updates the info label and the map preview canvas.
+        '''
+        if item is None:
+            return
+
+        # Get map name from stored item data for robustness
+        map_name = item.data(Qt.UserRole)
         self.selected_map = map_name
 
         map_path = os.path.join("minimaps", map_name)
-        self.label_map_info.setText(f"Selected map: {map_path}")
+        self.label_map_info.setText(f"Selected: {map_name}")
+
+        # --- Update Map Preview ---
+        preview_path = os.path.join(map_path, "map.png")
+        if os.path.exists(preview_path):
+            pixmap = QPixmap(preview_path)
+            scaled_pixmap = pixmap.scaled(
+                self.map_preview_canvas.width(),
+                self.map_preview_canvas.height(),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            )
+            self.map_preview_canvas.setPixmap(scaled_pixmap)
+        else:
+            self.map_preview_canvas.setText("Preview not available")
+            # Clear pixmap if it was set before
+            self.map_preview_canvas.setPixmap(QPixmap())
 
     def on_mode_checkbox_toggle(self, toggled_checkbox):
         '''
