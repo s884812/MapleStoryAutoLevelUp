@@ -80,9 +80,10 @@ class RuneSolver:
             None
         '''
         # Only the highlighted arrow will show on mask
-        img_bin = self.arrow_hsv_binarized(img,
-                                           self.cfg['rune_solver']['arrow_highlight_low_hsv'],
-                                           self.cfg['rune_solver']['arrow_highlight_high_hsv'])
+        #img_bin = self.arrow_hsv_binarized(img,
+        #                                   self.cfg['rune_solver']['arrow_highlight_low_hsv'],
+        #                                   self.cfg['rune_solver']['arrow_highlight_high_hsv'])
+        img_bin = self.arrow_white_binarized(img, sat_thresh=30, val_thresh=80)
         # Debug img_bin
         # cv2.imshow("img_bin", img_bin)
         # cv2.waitKey(1)
@@ -100,11 +101,11 @@ class RuneSolver:
                 img_roi,
                 method=cv2.HOUGH_GRADIENT,
                 dp=1.0,
-                minDist=10,  # Minimum distance between centers
-                param1=100,   # Edge detector high threshold
-                param2=15,   # Circle detection threshold (smaller = more sensitive)
-                minRadius=30,
-                maxRadius=35,
+                minDist=5,  # Minimum distance between centers
+                param1=50,   # Edge detector high threshold
+                param2=8,   # Circle detection threshold (smaller = more sensitive)
+                minRadius=25,
+                maxRadius=40,
             )
 
             if circles is not None: # Get the highlighted arrow
@@ -360,12 +361,13 @@ class RuneSolver:
         Returns:
             bool: True if the rune game is detected on screen, False otherwise.
         '''
-        img_bin = self.arrow_hsv_binarized(img,
-                                           self.cfg['rune_solver']['arrow_low_hsv'],
-                                           self.cfg['rune_solver']['arrow_high_hsv'])
+        #img_bin = self.arrow_hsv_binarized(img,
+        #                                   self.cfg['rune_solver']['arrow_low_hsv'],
+         #                                  self.cfg['rune_solver']['arrow_high_hsv'])
         # Debug img_bin
         # cv2.imshow("img_bin", img_bin)
         # cv2.waitKey(1)
+        img_bin = self.arrow_white_binarized(img, sat_thresh=30, val_thresh=80)
 
         num_circles = 0
         for arrow_idx in [0,1,2,3]:
@@ -437,3 +439,28 @@ class RuneSolver:
             return True
         else:
             return False
+    def arrow_white_binarized(self, img, sat_thresh=30, val_thresh=80):
+    """
+    Convert a BGR image to a binary mask for white arrow detection using HSV thresholding.
+
+    Args:
+        img (np.ndarray): BGR image
+        sat_thresh (int): Max saturation allowed for "white" (0–100)
+        val_thresh (int): Min brightness required for "white" (0–100)
+
+    Returns:
+        np.ndarray: Binary mask (0=background, 255=arrow)
+    """
+    # Convert BGR → HSV
+    img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+    # HSV in OpenCV is (H: 0–179, S: 0–255, V: 0–255)
+    # Hue 全部允許，所以 0–179
+    # S ≤ sat_thresh% * 255
+    # V ≥ val_thresh% * 255
+    lower = np.array([0, 0, int(val_thresh * 2.55)], dtype=np.uint8)
+    upper = np.array([179, int(sat_thresh * 2.55), 255], dtype=np.uint8)
+
+    mask = cv2.inRange(img_hsv, lower, upper)
+
+    return mask
